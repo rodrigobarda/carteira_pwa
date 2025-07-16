@@ -1,0 +1,20 @@
+{
+  "name": "Administração Efetivo CBMAC",
+  "short_name": "CARTEIRA CBMAC",
+  "start_url": "/admin.html",
+  "display": "standalone",
+  "background_color": "#b31217",
+  "theme_color": "#b31217",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

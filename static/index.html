@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login - Efetivo</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background: #fff;
+      color: #b31217;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      padding: 1rem;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 400px;
+      padding: 2rem;
+      background: #f9f9f9;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(179,18,23,0.2);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-weight: bold;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    input[type="email"],
+    input[type="password"] {
+      padding: 0.75rem;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+
+    button {
+      background: #b31217;
+      color: white;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 1rem;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background: #8e0e13;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <h1>Login</h1>
+    <form id="login-form">
+      <input type="email" name="email" placeholder="E-mail" required />
+      <input type="password" name="senha" placeholder="Senha" required />
+      <button type="submit">Entrar</button>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('login-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      const email = formData.get('email');
+      const senha = formData.get('senha');
+
+      try {
+        const resp = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, senha })
+        });
+
+        const data = await resp.json();
+
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+          const payload = JSON.parse(atob(data.token.split('.')[1]));
+          const perfil = payload.perfil.toLowerCase();
+          const userId = payload.id;
+
+          if (perfil === 'admin') {
+            window.location.href = 'admin.html';
+          } else if (perfil === 'usuario') {
+            const efetivoResp = await fetch('/efetivo', {
+              headers: { Authorization: 'Bearer ' + data.token }
+            });
+
+            if (!efetivoResp.ok) {
+              alert('Erro ao buscar dados do efetivo');
+              return;
+            }
+
+            const lista = await efetivoResp.json();
+            const efetivo = lista.find(e => String(e.usuario_id) === String(userId));
+
+            if (!efetivo) {
+              alert('Efetivo não encontrado para este usuário');
+              return;
+            }
+
+            window.location.href = `carteira.html?usuario_id=${efetivo.usuario_id}`;
+          } else {
+            alert('Perfil não reconhecido');
+          }
+
+        } else {
+          alert(data.erro || 'Erro no login');
+        }
+      } catch (err) {
+        console.error('Erro no login:', err);
+        alert('Erro ao processar login. Verifique conexão ou servidor.');
+      }
+    });
+  </script>
+</body>
+</html>

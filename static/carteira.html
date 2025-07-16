@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Carteira Funcional</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f3f3f3;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .carteira {
+      background-image: url('https://www.cbmac.ac.gov.br/wp-content/uploads/2025/07/RGCBMAC.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      color: rgb(201, 0, 0);
+      border-radius: 12px;
+      padding: 30px 20px;
+      max-width: 400px;
+      margin: auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      position: relative;
+    }
+
+    .cabecalho-interno {
+      font-weight: bold;
+      font-size: 1rem;
+      color: #b31217;
+      padding: 6px 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    .carteira img.foto {
+      width: 100px;
+      border-radius: 50%;
+      margin-bottom: 15px;
+    }
+
+    .carteira h2, .carteira p {
+      margin: 6px 0;
+    }
+
+    #qrcode {
+      margin-top: 15px;
+      display: inline-block;
+    }
+
+    #qrcode img {
+      width: 100px !important;
+      height: 100px !important;
+      border-radius: 0 !important;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="carteira" id="carteira-container">
+    <p>Carregando carteira...</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const usuario_id = params.get('usuario_id');
+    const token = localStorage.getItem('token');
+
+    function formatarDataBR(dataISO) {
+      if (!dataISO) return '';
+      const dt = new Date(dataISO);
+      if (isNaN(dt)) return dataISO;
+      const dia = String(dt.getDate()).padStart(2, '0');
+      const mes = String(dt.getMonth() + 1).padStart(2, '0');
+      const ano = dt.getFullYear();
+      return `${dia}/${mes}/${ano}`;
+    }
+
+    async function carregarCarteira() {
+      if (!usuario_id || !token) {
+        document.getElementById('carteira-container').innerHTML = '<p>Usuário não identificado ou token ausente.</p>';
+        return;
+      }
+
+      try {
+        const resp = await fetch('/efetivo', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        const lista = await resp.json();
+        const usuario = lista.find(u => String(u.usuario_id) === String(usuario_id));
+
+        if (!usuario) {
+          document.getElementById('carteira-container').innerHTML = '<p>Carteira não encontrada para este usuário.</p>';
+          return;
+        }
+
+        document.getElementById('carteira-container').innerHTML = `
+          <div class="cabecalho-interno">ESTADO DO ACRE<br>CORPO DE BOMBEIROS MILITAR</div>
+          <img src="${usuario.foto || 'https://via.placeholder.com/100'}" alt="Foto do usuário" class="foto" />
+          <h2>${usuario.nome || '-'}</h2>
+          <p><strong>Posto:</strong> ${usuario.posto || '-'}</p>
+          <p><strong>Matrícula:</strong> ${usuario.matricula || '-'}</p>
+          <p><strong>CPF:</strong> ${usuario.cpf || '-'}</p>
+          <p><strong>RG:</strong> ${usuario.rg || '-'}</p>
+          <p><strong>Nascimento:</strong> ${formatarDataBR(usuario.nascimento)}</p>
+          <p><strong>Admissão:</strong> ${formatarDataBR(usuario.admissao)}</p>
+          <div id="qrcode"></div>
+        `;
+
+        // Gera QR code se tiver link
+        if (usuario.link_qrcode) {
+          const qrcodeContainer = document.getElementById('qrcode');
+          qrcodeContainer.innerHTML = '';
+          new QRCode(qrcodeContainer, {
+            text: usuario.link_qrcode,
+            width: 100,
+            height: 100,
+            colorDark: "#000000",
+            colorLight: "#ffffff"
+          });
+        } else {
+          document.getElementById('qrcode').innerHTML = '<p><em>QR Code não disponível.</em></p>';
+        }
+
+      } catch (err) {
+        console.error('Erro ao carregar carteira:', err);
+        document.getElementById('carteira-container').innerHTML = '<p>Erro ao carregar dados da carteira.</p>';
+      }
+    }
+
+    carregarCarteira();
+  </script>
+</body>
+</html>

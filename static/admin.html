@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#b31217" />
+  <title>Administração Efetivo</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0; padding: 0;
+      font-family: Arial, sans-serif;
+    }
+    body {
+      background: #fff;
+      color: #b31217;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    header {
+      width: 100%;
+      max-width: 600px;
+      background: #b31217;
+      color: #fff;
+      padding: 1rem;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+    }
+    button#logout {
+      background: white;
+      color: #b31217;
+      border: 2px solid white;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button#logout:hover {
+      background: #f2f2f2;
+      border-color: #b31217;
+    }
+    form#formulario {
+      width: 100%;
+      max-width: 600px;
+      background: #f9f9f9;
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(179,18,23,0.2);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    form#formulario input[type="text"],
+    form#formulario input[type="date"],
+    form#formulario input[type="file"] {
+      padding: 0.5rem;
+      border-radius: 5px;
+      border: 2px solid #ccc;
+      width: 100%;
+    }
+    form#formulario button {
+      grid-column: 1 / -1;
+      background: #b31217;
+      color: white;
+      border: none;
+      padding: 0.75rem;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    form#formulario button:hover {
+      background: #8e0e13;
+    }
+
+    #filtro-container {
+      width: 100%;
+      max-width: 600px;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    #filtro {
+      width: 100%;
+      max-width: 300px;
+      padding: 0.5rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+      color: #b31217;
+    }
+    
+    .formulario input {
+        width: 100%;
+        padding: 10px;
+        margin-top: 6px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+         box-sizing: border-box;
+    }
+
+    ul#lista {
+      width: 100%;
+      max-width: 600px;
+      list-style: none;
+    }
+    ul#lista li {
+      background: #f9f9f9;
+      border-left: 6px solid #b31217;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(179,18,23,0.1);
+    }
+    ul#lista li img {
+      max-width: 100px;
+      border-radius: 6px;
+      margin-top: 0.5rem;
+      display: block;
+    }
+    ul#lista li button {
+      margin-top: 0.5rem;
+      background: white;
+      color: #b31217;
+      border: 2px solid #b31217;
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+      margin-right: 0.5rem;
+    }
+    ul#lista li button:hover {
+      background: #f2f2f2;
+    }
+    @media (max-width: 600px) {
+      form#formulario {
+        grid-template-columns: 1fr;
+      }
+    }
+    .btn-vermelho {
+      background-color: #ffbb00;
+      color: #920e13;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: bold;
+      display: inline-block;
+     
+    }
+
+    .btn-vermelho:hover {
+      background-color: #920e13;
+    }
+    .btn.ver {
+      background-color: #1e88e5;
+      color: white;
+      margin-left: 4px;
+    }
+
+    .btn.ver:hover {
+      background-color: #1565c0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Painel Administrativo</h1>
+    <a href="cadastro.html" class="btn-vermelho">Usuários</a>
+    <button id="logout">Sair</button>
+  </header>
+
+  <br>
+  <div id="filtro-container">
+    <input type="text" id="filtro" placeholder="Pesquisar por nome..." />
+  </div>
+
+  <form id="formulario" class="formulario" enctype="multipart/form-data">
+    <label>
+      Nome do Militar:
+      <input type="text" name="nome" placeholder="Nome completo" required />
+    </label>
+    <label>
+      CPF:
+      <input type="text" name="cpf" placeholder="000.000.000-00" required />
+    </label>
+    <label>
+      RG CBMAC:
+      <input type="text" name="rg" placeholder="RG Militar" required />
+    </label>
+    <label>
+      Matrícula:
+      <input type="text" name="matricula" placeholder="Ex: 12345678" required />
+    </label>
+    <label>
+      Posto/Graduação:
+      <input type="text" name="posto" placeholder="Ex: 3º SGT BM" required />
+    </label>
+    <label>
+      Nascimento:
+      <input type="date" name="nascimento" required />
+    </label>
+    <label>
+      Admissão:
+      <input type="date" name="admissao" required />
+    </label>
+    <label>
+      Foto:
+      <input type="file" name="foto" accept="image/*" />
+    </label>
+    <label>
+      Link QR Code:
+      <input type="text" name="link_qrcode" placeholder="URL do QR Code" />
+    </label>
+    <button type="submit">Cadastrar</button>
+  </form>
+
+  <ul id="lista"></ul>
+
+  <script>
+    const token = localStorage.getItem('token');
+    const headers = { Authorization: 'Bearer ' + token };
+
+    document.getElementById('logout').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      window.location.href = 'index.html';
+    });
+
+    const form = document.getElementById('formulario');
+    const filtroInput = document.getElementById('filtro');
+    const lista = document.getElementById('lista');
+    let usuarios = [];
+
+    async function carregar() {
+      const res = await fetch('/efetivo', { headers });
+      usuarios = await res.json();
+      mostrarLista(usuarios);
+    }
+
+    function mostrarLista(listaUsuarios) {
+      lista.innerHTML = '';
+      if (listaUsuarios.length === 0) {
+        lista.innerHTML = '<li>Nenhum usuário encontrado.</li>';
+        return;
+      }
+      listaUsuarios.forEach(pessoa => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <b>${pessoa.nome}</b> - ${pessoa.posto}<br>
+          Matrícula: ${pessoa.matricula}<br>
+          CPF: ${pessoa.cpf} | RG: ${pessoa.rg}<br>
+          Nasc: ${pessoa.nascimento} | Adm: ${pessoa.admissao}<br>
+          ${pessoa.foto ? `<img src="${pessoa.foto}" alt="Foto">` : ''}<br>
+          <button onclick="editar(${pessoa.id})">Editar</button>
+          <button onclick="excluir(${pessoa.id})">Excluir</button>
+          <button class="btn ver" onclick="verCarteira(${pessoa.usuario_id})">Ver</button>
+          <button class="btn ver" onclick="window.location.href='cadastro.html?efetivo_id=${pessoa.id}'">
+            Cadastrar Usuário
+          </button>
+        `;
+        lista.appendChild(li);
+      });
+    }
+
+    filtroInput.addEventListener('input', () => {
+      const termo = filtroInput.value.toLowerCase();
+      const filtrados = usuarios.filter(u => u.nome.toLowerCase().includes(termo));
+      mostrarLista(filtrados);
+    });
+
+    async function editar(id) {
+      const res = await fetch('/efetivo/' + id, { headers });
+      if (!res.ok) {
+        alert('Erro ao buscar dados do usuário');
+        return;
+      }
+      const pessoa = await res.json();
+
+      form.nome.value = pessoa.nome;
+      form.cpf.value = pessoa.cpf;
+      form.rg.value = pessoa.rg;
+      form.matricula.value = pessoa.matricula;
+      form.posto.value = pessoa.posto;
+      form.nascimento.value = pessoa.nascimento;
+      form.admissao.value = pessoa.admissao;
+      form.link_qrcode.value = pessoa.link_qrcode || '';
+
+      // Foto não pode ser preenchida programaticamente por input file
+      // Mostramos a imagem abaixo do input para referência
+      let fotoPreview = form.querySelector('#foto-preview');
+      if (!fotoPreview) {
+        fotoPreview = document.createElement('img');
+        fotoPreview.id = 'foto-preview';
+        fotoPreview.style.maxWidth = '100px';
+        fotoPreview.style.marginTop = '0.5rem';
+        form.querySelector('input[name="foto"]').parentNode.appendChild(fotoPreview);
+      }
+      fotoPreview.src = pessoa.foto || '';
+
+      form.setAttribute('data-edit-id', id);
+      form.querySelector('button[type="submit"]').textContent = 'Atualizar';
+      filtroInput.value = '';
+      mostrarLista(usuarios);
+    }
+    window.editar = editar;
+
+    async function excluir(id) {
+      if (confirm('Deseja excluir este registro?')) {
+        await fetch('/efetivo/' + id, { method: 'DELETE', headers });
+        carregar();
+      }
+    }
+    window.excluir = excluir;
+
+    async function verCarteira(usuarioId) {
+      try {
+        const resp = await fetch(`/efetivo`, {
+          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+
+        const lista = await resp.json();
+        
+        const usuario = lista.find(u => String(u.usuario_id) === String(usuarioId));
+
+        if (!usuario) {
+          alert('Carteira não encontrada para este usuário');
+          return;
+        }
+
+        localStorage.setItem('carteira_usuario', JSON.stringify(usuario));
+        window.location.href = `carteira.html?usuario_id=${usuario.usuario_id}`;
+
+      } catch (erro) {
+        console.error('Erro ao carregar carteira:', erro);
+        alert('Erro ao abrir carteira.');
+      }
+    }
+    window.verCarteira = verCarteira;
+
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const fd = new FormData(form);
+
+      const editId = form.getAttribute('data-edit-id');
+
+      if (editId) {
+        // Exigir foto e link_qrcode na edição
+        if (!fd.get('foto').name) {
+          alert('A foto é obrigatória ao atualizar');
+          return;
+        }
+        if (!fd.get('link_qrcode')) {
+          alert('O link do QR Code é obrigatório');
+          return;
+        }
+
+        await fetch('/efetivo/' + editId, {
+          method: 'PUT',
+          headers: { Authorization: 'Bearer ' + token },
+          body: fd,
+        });
+
+        form.removeAttribute('data-edit-id');
+        form.querySelector('button[type="submit"]').textContent = 'Cadastrar';
+      } else {
+        // Na criação, foto e link_qrcode podem ser opcionais? Se quiser obrigatório, ajuste aqui.
+        if (!fd.get('foto').name) {
+          alert('A foto é obrigatória');
+          return;
+        }
+        if (!fd.get('link_qrcode')) {
+          alert('O link do QR Code é obrigatório');
+          return;
+        }
+
+        await fetch('/efetivo', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + token },
+          body: fd,
+        });
+      }
+
+      form.reset();
+      carregar();
+    });
+
+
+    carregar();
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+        .then(reg => console.log('Service Worker registrado:', reg.scope))
+        .catch(err => console.error('Erro ao registrar Service Worker:', err));
+      });
+    }
+  </script>
+</body>
+</html>

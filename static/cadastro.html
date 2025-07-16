@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cadastro de Usuário</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #fff;
+      padding: 20px;
+    }
+
+    .formulario {
+      max-width: 500px;
+      margin: auto;
+      background: #f7f7f7;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 0 10px #ccc;
+    }
+
+    .formulario h2 {
+      color: #b31217;
+      margin-bottom: 1rem;
+    }
+
+    .formulario label {
+      display: block;
+      margin-bottom: 1rem;
+      font-weight: bold;
+      color: #b31217;
+    }
+
+    .formulario input,
+    .formulario select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    .formulario button {
+      width: 100%;
+      padding: 12px;
+      background-color: #b31217;
+      color: white;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+
+    .formulario button:hover {
+      background-color: #920e13;
+    }
+
+    .usuarios-lista {
+      max-width: 700px;
+      margin: 40px auto;
+      padding: 1rem;
+      background: #f0f0f0;
+      border-radius: 8px;
+    }
+
+    .usuarios-lista h3 {
+      color: #b31217;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+
+    .btn {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .editar {
+      background-color: #ffcc00;
+    }
+
+    .excluir {
+      background-color: #b31217;
+      color: #fff;
+    }
+
+    .editar:hover {
+      background-color: #e6b800;
+    }
+
+    .excluir:hover {
+      background-color: #920e13;
+    }
+  </style>
+</head>
+<body>
+
+  <form id="cadastro-form" class="formulario">
+    <h2 id="titulo-form">Cadastrar Perfil Usuário</h2>
+
+    <p><strong>Nome:</strong> <span id="militar-nome"></span></p>
+    <p><strong>CPF:</strong> <span id="militar-cpf"></span></p>
+    <p><strong>Matrícula:</strong> <span id="militar-matricula"></span></p>
+    <p><strong>Posto:</strong> <span id="militar-posto"></span></p>
+    <input type="hidden" name="id" id="usuario-id" />
+
+    <label>
+      Nome:
+      <input type="text" name="nome" id="nome" required />
+    </label>
+
+    <label>
+      E-mail:
+      <input type="email" name="email" id="email" required />
+    </label>
+
+    <label>
+      Senha:
+      <input type="password" name="senha" id="senha" />
+    </label>
+
+    <label>
+      Perfil:
+      <select name="perfil" id="perfil" required>
+        <option value="">Selecione</option>
+        <option value="admin">Administrador</option>
+        <option value="usuario">Usuário</option>
+      </select>
+    </label>
+
+    <button type="submit">Salvar</button>
+    <p></p>
+    <a href="admin.html" class="btn-vermelho-voltar">← Voltar para Admin</a>
+  </form>
+
+  <div class="usuarios-lista">
+    <h3>Usuários Cadastrados</h3>
+    <table id="tabela-usuarios">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Email</th>
+          <th>Perfil</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    const form = document.getElementById('cadastro-form');
+    const tabela = document.querySelector('#tabela-usuarios tbody');
+    const token = localStorage.getItem('token');
+
+    const efetivoId = new URLSearchParams(window.location.search).get('efetivo_id');
+
+    if (efetivoId) {
+      fetch('/efetivo', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      })
+      .then(resp => resp.json())
+      .then(lista => {
+        const militar = lista.find(e => e.id == efetivoId);
+        if (militar) {
+          document.getElementById('militar-nome').textContent = militar.nome;
+          document.getElementById('militar-cpf').textContent = militar.cpf;
+          document.getElementById('militar-matricula').textContent = militar.matricula;
+          document.getElementById('militar-posto').textContent = militar.posto;
+          document.getElementById('nome').value = militar.nome;
+        }
+      });
+    }
+
+    async function carregarUsuarios() {
+      const resp = await fetch('/usuarios', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const usuarios = await resp.json();
+      tabela.innerHTML = '';
+      usuarios.forEach(usuario => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${usuario.nome}</td>
+          <td>${usuario.email}</td>
+          <td>${usuario.perfil}</td>
+          <td>
+            <button class="btn editar" onclick="editarUsuario(${usuario.id})">Editar</button>
+            <button class="btn excluir" onclick="excluirUsuario(${usuario.id})">Excluir</button>
+          </td>
+        `;
+        tabela.appendChild(tr);
+      });
+    }
+
+    async function editarUsuario(id) {
+      try {
+        const resp = await fetch(`/usuarios/${id}`, {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        const usuario = await resp.json();
+
+        if (usuario.erro) {
+          alert(usuario.erro);
+          return;
+        }
+
+        // Preenche os campos do formulário
+        document.getElementById('usuario-id').value = usuario.id;
+        document.getElementById('nome').value = usuario.nome || '';
+        document.getElementById('email').value = usuario.email || '';
+        document.getElementById('senha').value = ''; // Não preencher senha
+        document.getElementById('perfil').value = usuario.perfil || '';
+
+        document.getElementById('titulo-form').textContent = 'Editar Usuário';
+
+      } catch (erro) {
+        console.error('Erro ao buscar usuário:', erro);
+        alert('Erro ao buscar dados do usuário.');
+      }
+    }
+
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const dados = Object.fromEntries(formData.entries());
+      const id = dados.id;
+
+      if (efetivoId) dados['efetivo_id'] = efetivoId;
+
+      let method = 'POST';
+      let url = '/usuarios';
+
+      if (id) {
+        method = 'PUT';
+        url = `/usuarios/${id}`;
+        if (!dados.senha) delete dados.senha;
+      }
+
+      const resp = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(dados)
+      });
+
+      const resultado = await resp.json();
+      alert(resultado.status || resultado.erro);
+      form.reset();
+      document.getElementById('titulo-form').textContent = 'Cadastrar Perfil Usuário';
+      carregarUsuarios();
+    });
+
+    carregarUsuarios();
+  </script>
+</body>
+</html>

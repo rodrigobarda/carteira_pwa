@@ -1,6 +1,9 @@
 services:
   - type: web
-    name: carteira-cbmac
+    name: carteira-pwa
     env: python
-    buildCommand: ""
-    startCommand: "python app.py"
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:5000
+    envVars:
+      - key: FLASK_ENV
+        value: production

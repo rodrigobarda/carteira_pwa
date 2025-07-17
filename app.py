@@ -3,6 +3,7 @@ import sqlite3
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from functools import wraps
+import os
 import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
@@ -11,13 +12,18 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 CORS(app)
 
+@app.route('/')
+def index():
+    return 'Aplicação no ar!'
+
 UPLOAD_FOLDER = 'uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 app.config['SECRET_KEY'] = 'segredo123'
-DB_PATH = 'efetivo_bm.sqlite'
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, 'efetivo_bm.sqlite')
 
 def query_db(query, args=(), fetch=False):
     conn = sqlite3.connect(DB_PATH)

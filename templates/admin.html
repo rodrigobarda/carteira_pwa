@@ -178,7 +178,7 @@
   <header>
     <h1>Painel Administrativo</h1>
     <a href="cadastro.html" class="btn-vermelho">Usuários</a>
-    <button id="logout">Sair</button>
+    <button onclick="logout()">Sair</button>
   </header>
 
   <br>
@@ -232,10 +232,10 @@
     const token = localStorage.getItem('token');
     const headers = { Authorization: 'Bearer ' + token };
 
-    document.getElementById('logout').addEventListener('click', () => {
+    function logout() {
       localStorage.removeItem('token');
-      window.location.href = 'index.html';
-    });
+      window.location.href = '/';
+    }
 
     const form = document.getElementById('formulario');
     const filtroInput = document.getElementById('filtro');

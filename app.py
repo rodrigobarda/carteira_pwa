@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, render_template, redirect
 from flask_cors import CORS
 from functools import wraps
 import os
@@ -14,7 +14,24 @@ CORS(app)
 
 @app.route('/')
 def index():
-    return 'Aplicação no ar!'
+    return render_template('index.html')
+
+@app.route('/admin.html')
+def admin():
+    return render_template('admin.html')
+
+@app.route('/carteira.html')
+def carteira():
+    return render_template('carteira.html')
+
+@app.route('/cadastro.html')
+def cadastro():
+    return render_template('cadastro.html')
+
+@app.route('/logout')
+def logout():
+    return redirect('/')
+
 
 UPLOAD_FOLDER = 'uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER

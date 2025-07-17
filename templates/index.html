@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Carteira CBMAC</title>
+  <meta name="theme-color" content="#b31217" />
+  <link rel="icon" type="image/png" href="/static/icon/icon-192x192.png" />
   <style>
     * {
       box-sizing: border-box;
@@ -35,6 +37,7 @@
       text-align: center;
       margin-bottom: 1.5rem;
       font-weight: bold;
+      color: #b31217;
     }
 
     form {
@@ -66,17 +69,20 @@
     button:hover {
       background: #8e0e13;
     }
+
+    .logo {
+      display: block;
+      margin: 0 auto 1rem auto;
+      width: 100px;
+    }
   </style>
 </head>
 <body>
   <div class="login-container">
-    <center>
-    <img src="https://www.cbmac.ac.gov.br/wp-content/uploads/2025/02/cropped-BRASAO-cbmac.png" alt="CBMAC" width="100">
-    </center>
-    <br>
+    <img src="/static/icon/icon-192x192.png" alt="CBMAC" class="logo" />
     <h1>CBMAC</h1>
     <form id="login-form">
-      <input type="email" name="email" placeholder="E-mail" required />
+      <input type="email" name="email" placeholder="E-mail" required autofocus />
       <input type="password" name="senha" placeholder="Senha" required />
       <button type="submit">Entrar</button>
     </form>
@@ -130,7 +136,7 @@
           }
 
         } else {
-          alert(data.erro || 'Erro no login');
+          alert(data.erro || 'Credenciais inválidas');
         }
       } catch (err) {
         console.error('Erro no login:', err);

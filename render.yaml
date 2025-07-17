@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: carteira-cbmac
+    env: python
+    buildCommand: ""
+    startCommand: "python app.py"

@@ -97,6 +97,7 @@ def login():
 
     return jsonify({'erro': 'Credenciais inválidas'}), 401
 
+#lista o efetivo do CBMAC
 @app.route('/efetivo', methods=['GET'])
 @token_required
 def listar_efetivo():

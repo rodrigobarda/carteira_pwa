@@ -86,6 +86,28 @@
       return `${dia}/${mes}/${ano}`;
     }
 
+    function calcularTempoDeServico(dataAdmissaoStr) {
+      const hoje = new Date();
+      const admissao = new Date(dataAdmissaoStr);
+      let anos = hoje.getFullYear() - admissao.getFullYear();
+      let meses = hoje.getMonth() - admissao.getMonth();
+      let dias = hoje.getDate() - admissao.getDate();
+
+      if (dias < 0) {
+        meses--;
+        const ultimoDiaMesAnterior = new Date(hoje.getFullYear(), hoje.getMonth(), 0).getDate();
+        dias += ultimoDiaMesAnterior;
+      }
+
+      if (meses < 0) {
+        anos--;
+        meses += 12;
+      }
+
+      return `${anos} ano(s), ${meses} mês(es), ${dias} dia(s)`;
+    }
+
+
     async function carregarCarteira() {
       if (!usuario_id || !token) {
         document.getElementById('carteira-container').innerHTML = '<p>Usuário não identificado ou token ausente.</p>';
@@ -105,6 +127,8 @@
           return;
         }
 
+        const tempoServico = calcularTempoDeServico(usuario.admissao);
+
         document.getElementById('carteira-container').innerHTML = `
           <div class="cabecalho-interno">ESTADO DO ACRE<br>CORPO DE BOMBEIROS MILITAR</div>
           <img src="${usuario.foto || 'https://via.placeholder.com/100'}" alt="Foto do usuário" class="foto" />
@@ -115,6 +139,7 @@
           <p><strong>RG:</strong> ${usuario.rg || '-'}</p>
           <p><strong>Nascimento:</strong> ${formatarDataBR(usuario.nascimento)}</p>
           <p><strong>Admissão:</strong> ${formatarDataBR(usuario.admissao)}</p>
+          <p><strong>Tempo de Serviço:</strong> ${tempoServico}</p>
           <div id="qrcode"></div>
         `;
 

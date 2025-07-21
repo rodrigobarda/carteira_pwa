@@ -8,7 +8,6 @@ import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
-from google_drive_upload import upload_to_drive
 
 app = Flask(__name__)
 CORS(app)
@@ -42,7 +41,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 # CONFIG
 app.config['SECRET_KEY'] = 'segredo123'
-DATABASE_URL = os.getenv("postgresql://efetivo_bm_user:qeJWDJYQ7fMdy7xrTXhUyvGEkzeZrjcE@dpg-d1t95rur433s73cnkig0-a.oregon-postgres.render.com/efetivo_bm")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://efetivo_bm_user:qeJWDJYQ7fMdy7xrTXhUyvGEkzeZrjcE@dpg-d1t95rur433s73cnkig0-a.oregon-postgres.render.com/efetivo_bm")
 
 def get_pg_connection():
     return psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
@@ -102,7 +101,7 @@ def login():
 @app.route('/efetivo', methods=['GET'])
 @token_required
 def listar_efetivo():
-    dados = query_db("SELECT id, nome, cpf, rg, matricula, posto, nascimento, admissao, foto, usuario_id, link_qrcode FROM efetivo", fetch=True)
+    dados = query_db("SELECT * FROM efetivo", fetch=True)
     return jsonify(dados)
 
 @app.route('/efetivo/<int:id>', methods=['GET'])
@@ -224,25 +223,10 @@ def cadastrar_usuario():
     conn.close()
     return jsonify({'status': 'Cadastrado com sucesso', 'usuario_id': usuario_id})
 
-# UPLOAD COM GOOGLE DRIVE
-@app.route('/upload', methods=['POST'])
-@token_required
-def upload_file():
-    if 'foto' not in request.files:
-        return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
-    foto = request.files['foto']
-    if foto.filename == '':
-        return jsonify({'erro': 'Nenhum arquivo selecionado'}), 400
-    filename = secure_filename(foto.filename)
-    caminho_temp = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    foto.save(caminho_temp)
-    try:
-        url_drive = upload_to_drive(caminho_temp, filename)
-        os.remove(caminho_temp)
-        return jsonify({'foto': url_drive})
-    except Exception as e:
-        print("Erro no upload para Drive:", e)
-        return jsonify({'erro': 'Falha ao enviar para o Google Drive'}), 500
+# ROTA PARA ARQUIVOS ESTÁTICOS (imagens/fotos)
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 if __name__ == '__main__':
     #app.run(host='0.0.0.0', port=5000)

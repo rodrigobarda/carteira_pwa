@@ -1,17 +1,19 @@
 import os
-import sqlite3
+import psycopg2
+import psycopg2.extras
 from flask import Flask, request, jsonify, send_from_directory, render_template, redirect
 from flask_cors import CORS
 from functools import wraps
-import os
 import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
 from werkzeug.utils import secure_filename
+from google_drive_upload import upload_to_drive
 
 app = Flask(__name__)
 CORS(app)
 
+# ROTAS HTML
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -32,19 +34,21 @@ def cadastro():
 def logout():
     return redirect('/')
 
-
+# UPLOADS
 UPLOAD_FOLDER = 'uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+# CONFIG
 app.config['SECRET_KEY'] = 'segredo123'
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DB_PATH = os.path.join(BASE_DIR, 'efetivo_bm.sqlite')
+DATABASE_URL = os.getenv("postgresql://efetivo_bm_user:qeJWDJYQ7fMdy7xrTXhUyvGEkzeZrjcE@dpg-d1t95rur433s73cnkig0-a.oregon-postgres.render.com/efetivo_bm")
+
+def get_pg_connection():
+    return psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
 
 def query_db(query, args=(), fetch=False):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row  # para acessar por nome: row['coluna']
+    conn = get_pg_connection()
     cur = conn.cursor()
     cur.execute(query, args)
     result = cur.fetchall() if fetch else None
@@ -53,6 +57,7 @@ def query_db(query, args=(), fetch=False):
     conn.close()
     return result
 
+# AUTENTICAÇÃO
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -78,12 +83,11 @@ def login():
     if not email or not senha:
         return jsonify({'erro': 'Email e senha são obrigatórios'}), 400
 
-    usuario = query_db("SELECT id, nome, email, senha, perfil FROM usuarios WHERE email = ?", (email,), fetch=True)
-
+    usuario = query_db("SELECT id, nome, email, senha, perfil FROM usuarios WHERE email = %s", (email,), fetch=True)
     if usuario:
         user = usuario[0]
         senha_hash = user['senha']
-        if bcrypt.checkpw(senha.encode('utf-8'), senha_hash.encode('utf-8')):
+        if bcrypt.checkpw(senha.encode(), senha_hash.encode()):
             token = jwt.encode({
                 'id': user['id'],
                 'nome': user['nome'],
@@ -91,63 +95,25 @@ def login():
                 'perfil': user['perfil'],
                 'exp': datetime.now(timezone.utc) + timedelta(hours=6)
             }, app.config['SECRET_KEY'], algorithm="HS256")
-            if isinstance(token, bytes):
-                token = token.decode('utf-8')
-            return jsonify({'token': token})
-
+            return jsonify({'token': token if isinstance(token, str) else token.decode()})
     return jsonify({'erro': 'Credenciais inválidas'}), 401
 
-#lista o efetivo do CBMAC
+# EFETIVO
 @app.route('/efetivo', methods=['GET'])
 @token_required
 def listar_efetivo():
     dados = query_db("SELECT id, nome, cpf, rg, matricula, posto, nascimento, admissao, foto, usuario_id, link_qrcode FROM efetivo", fetch=True)
-    resultado = []
-    for r in dados:
-        resultado.append({
-            'id': r['id'],
-            'nome': r['nome'],
-            'cpf': r['cpf'],
-            'rg': r['rg'],
-            'matricula': r['matricula'],
-            'posto': r['posto'],
-            'nascimento': r['nascimento'],
-            'admissao': r['admissao'],
-            'foto': r['foto'],
-            'usuario_id': r['usuario_id'],
-            'link_qrcode': r['link_qrcode'] or ''
-        })
-    return jsonify(resultado)
+    return jsonify(dados)
 
 @app.route('/efetivo/<int:id>', methods=['GET'])
 @token_required
 def obter_efetivo(id):
     if request.user['perfil'] != 'admin':
         return jsonify({'erro': 'Acesso negado'}), 403
-
-    resultado = query_db("SELECT id, nome, cpf, rg, matricula, posto, nascimento, admissao, foto, link_qrcode, usuario_id FROM efetivo WHERE id = ?", [id], fetch=True)
-    
-    if not resultado:
+    dados = query_db("SELECT * FROM efetivo WHERE id = %s", (id,), fetch=True)
+    if not dados:
         return jsonify({'erro': 'Efetivo não encontrado'}), 404
-
-    row = resultado[0]
-
-    efetivo = {
-        'id': row['id'],
-        'nome': row['nome'],
-        'cpf': row['cpf'],
-        'rg': row['rg'],
-        'matricula': row['matricula'],
-        'posto': row['posto'],
-        'nascimento': row['nascimento'][:10] if row['nascimento'] else None,
-        'admissao': row['admissao'][:10] if row['admissao'] else None,
-        'foto': row['foto'],
-        'link_qrcode': row['link_qrcode'],
-        'usuario_id': row['usuario_id'],
-    }   
-
-    return jsonify(efetivo)
-
+    return jsonify(dados[0])
 
 @app.route('/efetivo', methods=['POST'])
 @token_required
@@ -155,14 +121,12 @@ def adicionar_efetivo():
     if request.user['perfil'] != 'admin':
         return jsonify({'erro': 'Acesso negado'}), 403
     data = request.get_json()
-    nascimento = data['nascimento'][:10] if data.get('nascimento') else None
-    admissao = data['admissao'][:10] if data.get('admissao') else None
-
-    query_db("""INSERT INTO efetivo (nome, cpf, rg, matricula, posto, nascimento, admissao, foto, link_qrcode) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""", (
-        data['nome'], data['cpf'], data['rg'], data['matricula'],
-        data['posto'], nascimento, admissao, data.get('foto', ''), data.get('link_qrcode', '')
-    ))
+    nascimento = data.get('nascimento')[:10] if data.get('nascimento') else None
+    admissao = data.get('admissao')[:10] if data.get('admissao') else None
+    query_db("""INSERT INTO efetivo (nome, cpf, rg, matricula, posto, nascimento, admissao, foto, link_qrcode)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+             (data['nome'], data['cpf'], data['rg'], data['matricula'],
+              data['posto'], nascimento, admissao, data.get('foto', ''), data.get('link_qrcode', '')))
     return jsonify({'status': 'Cadastrado com sucesso'})
 
 @app.route('/efetivo/<int:id>', methods=['PUT'])
@@ -170,15 +134,6 @@ def adicionar_efetivo():
 def atualizar_efetivo(id):
     if request.user['perfil'] != 'admin':
         return jsonify({'erro': 'Acesso negado'}), 403
-
-    # Verifica se o efetivo existe
-    efetivo = query_db("SELECT foto, link_qrcode FROM efetivo WHERE id = ?", [id], fetch=True)
-    if not efetivo:
-        return jsonify({'erro': 'Efetivo não encontrado'}), 404
-
-    dados = efetivo[0]
-    foto_antiga = dados['foto']
-    qrcode_antigo = dados['link_qrcode']
 
     nome = request.form.get('nome')
     cpf = request.form.get('cpf')
@@ -189,7 +144,6 @@ def atualizar_efetivo(id):
     admissao = request.form.get('admissao')
     link_qrcode = request.form.get('link_qrcode')
 
-    # ✅ Se foto não for enviada, erro
     if 'foto' not in request.files or request.files['foto'].filename == '':
         return jsonify({'erro': 'Foto obrigatória'}), 400
 
@@ -199,16 +153,12 @@ def atualizar_efetivo(id):
     foto.save(caminho_foto)
     caminho_foto_db = f'/uploads/{filename}'
 
-    # ✅ Verifica se link_qrcode foi enviado
     if not link_qrcode:
         return jsonify({'erro': 'Link do QRCode obrigatório'}), 400
 
-    query_db("""
-        UPDATE efetivo SET nome = ?, cpf = ?, rg = ?, matricula = ?, posto = ?, 
-        nascimento = ?, admissao = ?, foto = ?, link_qrcode = ?
-        WHERE id = ?
-    """, [nome, cpf, rg, matricula, posto, nascimento, admissao, caminho_foto_db, link_qrcode, id])
-
+    query_db("""UPDATE efetivo SET nome=%s, cpf=%s, rg=%s, matricula=%s, posto=%s,
+                nascimento=%s, admissao=%s, foto=%s, link_qrcode=%s WHERE id=%s""",
+             (nome, cpf, rg, matricula, posto, nascimento, admissao, caminho_foto_db, link_qrcode, id))
     return jsonify({'status': 'Atualizado com sucesso'})
 
 @app.route('/efetivo/<int:id>', methods=['DELETE'])
@@ -216,60 +166,41 @@ def atualizar_efetivo(id):
 def excluir_efetivo(id):
     if request.user['perfil'] != 'admin':
         return jsonify({'erro': 'Acesso negado'}), 403
-    query_db("DELETE FROM efetivo WHERE id=?", (id,))
-    return jsonify({'status': 'excluído'})
+    query_db("DELETE FROM efetivo WHERE id=%s", (id,))
+    return jsonify({'status': 'Excluído'})
 
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-@app.route('/usuarios')
+# USUÁRIOS
+@app.route('/usuarios', methods=['GET'])
 @token_required
 def listar_usuarios():
     if request.user['perfil'] != 'admin':
         return jsonify({'erro': 'Acesso negado'}), 403
-    usuarios = query_db("SELECT id, nome, email, perfil FROM usuarios", fetch=True)
-    resultado = [{'id': u['id'], 'nome': u['nome'], 'email': u['email'], 'perfil': u['perfil']} for u in usuarios]
-    return jsonify(resultado)
+    dados = query_db("SELECT id, nome, email, perfil FROM usuarios", fetch=True)
+    return jsonify(dados)
 
 @app.route('/usuarios/<int:id>', methods=['GET'])
 @token_required
 def obter_usuario(id):
     if request.user['perfil'] != 'admin':
         return jsonify({'erro': 'Acesso negado'}), 403
-    usuario = query_db("SELECT id, nome, email, perfil FROM usuarios WHERE id = ?", (id,), fetch=True)
-    if not usuario:
+    dados = query_db("SELECT id, nome, email, perfil FROM usuarios WHERE id = %s", (id,), fetch=True)
+    if not dados:
         return jsonify({'erro': 'Usuário não encontrado'}), 404
-    u = usuario[0]
-    return jsonify({'id': u['id'], 'nome': u['nome'], 'email': u['email'], 'perfil': u['perfil']})
+    return jsonify(dados[0])
 
 @app.route('/usuarios/<int:id>', methods=['PUT'])
 @token_required
 def atualizar_usuario(id):
     if request.user['perfil'] != 'admin':
         return jsonify({'erro': 'Acesso negado'}), 403
-
     dados = request.get_json()
-    nome = dados.get('nome')
-    email = dados.get('email')
-    senha = dados.get('senha')
-    perfil = dados.get('perfil')
-
-    if not nome or not email or not perfil:
-        return jsonify({'erro': 'Campos obrigatórios ausentes'}), 400
-
-    if senha:
-        senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
-        query_db(
-            "UPDATE usuarios SET nome=?, email=?, senha=?, perfil=? WHERE id=?",
-            (nome, email, senha_hash, perfil, id)
-        )
+    if dados.get('senha'):
+        senha_hash = bcrypt.hashpw(dados['senha'].encode(), bcrypt.gensalt()).decode()
+        query_db("UPDATE usuarios SET nome=%s, email=%s, senha=%s, perfil=%s WHERE id=%s",
+                 (dados['nome'], dados['email'], senha_hash, dados['perfil'], id))
     else:
-        query_db(
-            "UPDATE usuarios SET nome=?, email=?, perfil=? WHERE id=?",
-            (nome, email, perfil, id)
-        )
-
+        query_db("UPDATE usuarios SET nome=%s, email=%s, perfil=%s WHERE id=%s",
+                 (dados['nome'], dados['email'], dados['perfil'], id))
     return jsonify({'status': 'Usuário atualizado com sucesso'})
 
 @app.route('/usuarios', methods=['POST'])
@@ -277,42 +208,23 @@ def atualizar_usuario(id):
 def cadastrar_usuario():
     if request.user['perfil'] != 'admin':
         return jsonify({'erro': 'Acesso negado'}), 403
-
     data = request.get_json()
-    nome = data.get('nome')
-    email = data.get('email')
-    senha = data.get('senha')
-    perfil = data.get('perfil')
-    efetivo_id = data.get('efetivo_id')
-
-    if not all([nome, email, senha, perfil]):
+    if not all([data.get('nome'), data.get('email'), data.get('senha'), data.get('perfil')]):
         return jsonify({'erro': 'Dados obrigatórios incompletos'}), 400
-
-    hashed = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
-
-    # Inserir usuário
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    senha_hash = bcrypt.hashpw(data['senha'].encode(), bcrypt.gensalt()).decode()
+    conn = get_pg_connection()
     cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO usuarios (nome, email, senha, perfil) VALUES (?, ?, ?, ?)",
-        (nome, email, hashed, perfil)
-    )
-    novo_usuario_id = cur.lastrowid
-
-    # Atualizar usuário na tabela efetivo se efetivo_id informado
-    if efetivo_id and str(efetivo_id).isdigit():
-        cur.execute(
-            "UPDATE efetivo SET usuario_id = ? WHERE id = ?",
-            (novo_usuario_id, int(efetivo_id))
-        )
-
+    cur.execute("""INSERT INTO usuarios (nome, email, senha, perfil) VALUES (%s, %s, %s, %s) RETURNING id""",
+                (data['nome'], data['email'], senha_hash, data['perfil']))
+    usuario_id = cur.fetchone()['id']
+    if data.get('efetivo_id'):
+        cur.execute("UPDATE efetivo SET usuario_id = %s WHERE id = %s", (usuario_id, data['efetivo_id']))
     conn.commit()
     cur.close()
     conn.close()
+    return jsonify({'status': 'Cadastrado com sucesso', 'usuario_id': usuario_id})
 
-    return jsonify({'status': 'Cadastrado com sucesso', 'usuario_id': novo_usuario_id})
-
+# UPLOAD COM GOOGLE DRIVE
 @app.route('/upload', methods=['POST'])
 @token_required
 def upload_file():
@@ -322,11 +234,16 @@ def upload_file():
     if foto.filename == '':
         return jsonify({'erro': 'Nenhum arquivo selecionado'}), 400
     filename = secure_filename(foto.filename)
-    caminho = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    foto.save(caminho)
-    caminho_url = f'/uploads/{filename}'
-    return jsonify({'foto': caminho_url})
+    caminho_temp = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    foto.save(caminho_temp)
+    try:
+        url_drive = upload_to_drive(caminho_temp, filename)
+        os.remove(caminho_temp)
+        return jsonify({'foto': url_drive})
+    except Exception as e:
+        print("Erro no upload para Drive:", e)
+        return jsonify({'erro': 'Falha ao enviar para o Google Drive'}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
-    #app.run(debug=True)
+    #app.run(host='0.0.0.0', port=5000)
+    app.run(debug=True)

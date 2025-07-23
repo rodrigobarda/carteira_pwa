@@ -136,36 +136,19 @@ def adicionar_efetivo():
 
 @app.route('/efetivo/<int:id>', methods=['PUT'])
 def atualizar_efetivo(id):
-    if 'usuario' not in session or session['usuario']['perfil'] != 'admin':
+    if not require_login_admin():
         return jsonify({'erro': 'Acesso negado'}), 403
-
-    try:
-        form = request.form
-        foto = request.files.get('foto')
-        if not foto:
-            return jsonify({'erro': 'A foto é obrigatória'}), 400
-
-        from google_drive_upload import upload_to_drive
-        filename = secure_filename(foto.filename)
-        caminho_foto = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        foto.save(caminho_foto)
-
-        # Faz upload no Google Drive
-        foto_url = upload_to_drive(caminho_foto, filename)
-
-        # Remove o arquivo local após o upload
-        os.remove(caminho_foto)
-
-        query_db("""UPDATE efetivo SET nome=%s, cpf=%s, rg=%s, matricula=%s, posto=%s,
-                    nascimento=%s, admissao=%s, foto=%s, link_qrcode=%s WHERE id=%s""",
-                (form['nome'], form['cpf'], form['rg'], form['matricula'], form['posto'],
-                 form['nascimento'], form['admissao'], foto_url, form['link_qrcode'], id))
-        
-        return jsonify({'status': 'Atualizado com sucesso'})
-
-    except Exception as e:
-        return jsonify({'erro': str(e)}), 500
-
+    form = request.form
+    foto = request.files['foto']
+    filename = secure_filename(foto.filename)
+    caminho_foto = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    foto.save(caminho_foto)
+    foto_url = f'/uploads/{filename}'
+    query_db("""UPDATE efetivo SET nome=%s, cpf=%s, rg=%s, matricula=%s, posto=%s,
+                nascimento=%s, admissao=%s, foto=%s, link_qrcode=%s WHERE id=%s""",
+             (form['nome'], form['cpf'], form['rg'], form['matricula'], form['posto'],
+              form['nascimento'], form['admissao'], foto_url, form['link_qrcode'], id))
+    return jsonify({'status': 'Atualizado com sucesso'})
 
 @app.route('/efetivo/<int:id>', methods=['DELETE'])
 def excluir_efetivo(id):

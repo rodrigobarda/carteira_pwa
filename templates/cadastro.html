@@ -169,14 +169,11 @@
   <script>
     const form = document.getElementById('cadastro-form');
     const tabela = document.querySelector('#tabela-usuarios tbody');
-    const token = localStorage.getItem('token');
 
     const efetivoId = new URLSearchParams(window.location.search).get('efetivo_id');
 
     if (efetivoId) {
-      fetch('/efetivo', {
-        headers: { 'Authorization': 'Bearer ' + token }
-      })
+      fetch('/efetivo')
       .then(resp => resp.json())
       .then(lista => {
         const militar = lista.find(e => e.id == efetivoId);
@@ -191,9 +188,7 @@
     }
 
     async function carregarUsuarios() {
-      const resp = await fetch('/usuarios', {
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
+      const resp = await fetch('/usuarios');
       const usuarios = await resp.json();
       tabela.innerHTML = '';
       usuarios.forEach(usuario => {
@@ -213,14 +208,11 @@
 
     async function editarUsuario(id) {
       try {
-        const resp = await fetch(`/usuarios/${id}`, {
-          headers: { 'Authorization': 'Bearer ' + token }
-        });
-
+        const resp = await fetch(`/usuarios/${id}`);
         const usuario = await resp.json();
 
-        if (usuario.erro) {
-          alert(usuario.erro);
+        if (!resp.ok) {
+          alert(usuario.erro || 'Erro: Sessão expirada ou acesso negado.');
           return;
         }
 
@@ -239,6 +231,22 @@
       }
     }
 
+    async function excluirUsuario(id) {
+      if (confirm('Deseja realmente excluir este usuário?')) {
+        const resp = await fetch(`/usuarios/${id}`, {
+          method: 'DELETE'
+        });
+
+        if (resp.ok) {
+          alert('Usuário excluído com sucesso.');
+          carregarUsuarios(); // ou recarregue como preferir
+        } else {
+          const erro = await resp.json();
+          alert('Erro: ' + (erro.erro || 'Falha ao excluir usuário.'));
+        }
+      }
+    }
+
 
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
@@ -254,14 +262,13 @@
       if (id) {
         method = 'PUT';
         url = `/usuarios/${id}`;
-        if (!dados.senha) delete dados.senha;
+        if (!dados.senha) delete dados.senha; // só envia se estiver preenchida
       }
 
       const resp = await fetch(url, {
         method,
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + token
+          'Content-Type': 'application/json' // ESSENCIAL para evitar erro 415
         },
         body: JSON.stringify(dados)
       });
@@ -272,7 +279,6 @@
       document.getElementById('titulo-form').textContent = 'Cadastrar Perfil Usuário';
       carregarUsuarios();
     });
-
     carregarUsuarios();
   </script>
 </body>

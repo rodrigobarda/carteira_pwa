@@ -35,6 +35,6 @@ def upload_to_drive(file_path, file_name):
         media_body=media,
         fields='id, webViewLink, webContentLink'
     ).execute()
-
+    
     return uploaded.get('webContentLink')  # link para download direto
 

@@ -10,7 +10,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Carteira CBMAC</title>
-  <meta name="theme-color" content="#b31217" />
   <link rel="icon" type="image/png" href="/static/icon/icon-192x192.png" />
   <style>
     * {
@@ -110,39 +109,10 @@
 
         const data = await resp.json();
 
-        if (data.token) {
-          localStorage.setItem('token', data.token);
-          const payload = JSON.parse(atob(data.token.split('.')[1]));
-          const perfil = payload.perfil.toLowerCase();
-          const userId = payload.id;
-
-          if (perfil === 'admin') {
-            window.location.href = 'admin.html';
-          } else if (perfil === 'usuario') {
-            const efetivoResp = await fetch('/efetivo', {
-              headers: { Authorization: 'Bearer ' + data.token }
-            });
-
-            if (!efetivoResp.ok) {
-              alert('Erro ao buscar dados do efetivo');
-              return;
-            }
-
-            const lista = await efetivoResp.json();
-            const efetivo = lista.find(e => String(e.usuario_id) === String(userId));
-
-            if (!efetivo) {
-              alert('Efetivo não encontrado para este usuário');
-              return;
-            }
-
-            window.location.href = `carteira.html?usuario_id=${efetivo.usuario_id}`;
-          } else {
-            alert('Perfil não reconhecido');
-          }
-
+        if (data.redirect) {
+          window.location.href = data.redirect;
         } else {
-          alert(data.erro || 'Credenciais inválidas');
+          alert(data.erro || 'Erro no login');
         }
       } catch (err) {
         console.error('Erro no login:', err);

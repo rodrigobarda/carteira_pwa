@@ -149,8 +149,8 @@
       }
     }
     .btn-vermelho {
-      background-color: #ffbb00;
-      color: #920e13;
+      background-color: #ff0000;
+      color: #ffffff;
       padding: 10px 20px;
       border: none;
       border-radius: 6px;
@@ -229,12 +229,10 @@
   <ul id="lista"></ul>
 
   <script>
-    const token = localStorage.getItem('token');
-    const headers = { Authorization: 'Bearer ' + token };
-
+    
     function logout() {
-      localStorage.removeItem('token');
-      window.location.href = '/';
+      fetch('/logout')
+        .then(() => window.location.href = '/');
     }
 
     const form = document.getElementById('formulario');
@@ -243,9 +241,17 @@
     let usuarios = [];
 
     async function carregar() {
-      const res = await fetch('/efetivo', { headers });
+      const res = await fetch('/efetivo');
       usuarios = await res.json();
       mostrarLista(usuarios);
+    }
+
+    function formatarData(dataString) {
+      const data = new Date(dataString);
+      const dia = String(data.getDate()).padStart(2, '0');
+      const mes = String(data.getMonth() + 1).padStart(2, '0');
+      const ano = data.getFullYear();
+      return `${dia}/${mes}/${ano}`;
     }
 
     function mostrarLista(listaUsuarios) {
@@ -260,7 +266,7 @@
           <b>${pessoa.nome}</b> - ${pessoa.posto}<br>
           Matrícula: ${pessoa.matricula}<br>
           CPF: ${pessoa.cpf} | RG: ${pessoa.rg}<br>
-          Nasc: ${pessoa.nascimento} | Adm: ${pessoa.admissao}<br>
+          Nasc: ${formatarData(pessoa.nascimento)} | Adm: ${formatarData(pessoa.admissao)}<br>
           ${pessoa.foto ? `<img src="${pessoa.foto}" alt="Foto">` : ''}<br>
           <button onclick="editar(${pessoa.id})">Editar</button>
           <button onclick="excluir(${pessoa.id})">Excluir</button>
@@ -280,38 +286,43 @@
     });
 
     async function editar(id) {
-      const res = await fetch('/efetivo/' + id, { headers });
-      if (!res.ok) {
-        alert('Erro ao buscar dados do usuário');
-        return;
+      try {
+        const res = await fetch('/efetivo/' + id);
+        const pessoa = await res.json();
+
+        if (!res.ok || pessoa.erro) {
+          alert(pessoa.erro || 'Erro ao buscar dados do usuário');
+          return;
+        }
+
+        form.nome.value = pessoa.nome || '';
+        form.cpf.value = pessoa.cpf || '';
+        form.rg.value = pessoa.rg || '';
+        form.matricula.value = pessoa.matricula || '';
+        form.posto.value = pessoa.posto || '';
+        form.nascimento.value = new Date(pessoa.nascimento).toISOString().split('T')[0];
+        form.admissao.value = new Date(pessoa.admissao).toISOString().split('T')[0];
+        form.link_qrcode.value = pessoa.link_qrcode || '';
+
+        // Mostrar a foto existente
+        let fotoPreview = form.querySelector('#foto-preview');
+        if (!fotoPreview) {
+          fotoPreview = document.createElement('img');
+          fotoPreview.id = 'foto-preview';
+          fotoPreview.style.maxWidth = '100px';
+          fotoPreview.style.marginTop = '0.5rem';
+          form.querySelector('input[name="foto"]').parentNode.appendChild(fotoPreview);
+        }
+        fotoPreview.src = pessoa.foto || '';
+
+        form.setAttribute('data-edit-id', id);
+        form.querySelector('button[type="submit"]').textContent = 'Atualizar';
+        filtroInput.value = '';
+        mostrarLista(usuarios);
+      } catch (erro) {
+        console.error('Erro ao buscar efetivo:', erro);
+        alert('Erro ao buscar dados do efetivo');
       }
-      const pessoa = await res.json();
-
-      form.nome.value = pessoa.nome;
-      form.cpf.value = pessoa.cpf;
-      form.rg.value = pessoa.rg;
-      form.matricula.value = pessoa.matricula;
-      form.posto.value = pessoa.posto;
-      form.nascimento.value = pessoa.nascimento;
-      form.admissao.value = pessoa.admissao;
-      form.link_qrcode.value = pessoa.link_qrcode || '';
-
-      // Foto não pode ser preenchida programaticamente por input file
-      // Mostramos a imagem abaixo do input para referência
-      let fotoPreview = form.querySelector('#foto-preview');
-      if (!fotoPreview) {
-        fotoPreview = document.createElement('img');
-        fotoPreview.id = 'foto-preview';
-        fotoPreview.style.maxWidth = '100px';
-        fotoPreview.style.marginTop = '0.5rem';
-        form.querySelector('input[name="foto"]').parentNode.appendChild(fotoPreview);
-      }
-      fotoPreview.src = pessoa.foto || '';
-
-      form.setAttribute('data-edit-id', id);
-      form.querySelector('button[type="submit"]').textContent = 'Atualizar';
-      filtroInput.value = '';
-      mostrarLista(usuarios);
     }
     window.editar = editar;
 
@@ -325,9 +336,7 @@
 
     async function verCarteira(usuarioId) {
       try {
-        const resp = await fetch(`/efetivo`, {
-          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
-        });
+        const resp = await fetch(`/efetivo`);
 
         const lista = await resp.json();
         
@@ -368,14 +377,13 @@
 
         await fetch('/efetivo/' + editId, {
           method: 'PUT',
-          headers: { Authorization: 'Bearer ' + token },
-          body: fd,
+          body: fd
         });
 
         form.removeAttribute('data-edit-id');
         form.querySelector('button[type="submit"]').textContent = 'Cadastrar';
       } else {
-        // Na criação, foto e link_qrcode podem ser opcionais? Se quiser obrigatório, ajuste aqui.
+        // Cadastro novo
         if (!fd.get('foto').name) {
           alert('A foto é obrigatória');
           return;
@@ -387,15 +395,13 @@
 
         await fetch('/efetivo', {
           method: 'POST',
-          headers: { Authorization: 'Bearer ' + token },
-          body: fd,
+          body: fd
         });
       }
 
       form.reset();
       carregar();
     });
-
 
     carregar();
   </script>
@@ -407,6 +413,7 @@
         .catch(err => console.error('Erro ao registrar Service Worker:', err));
       });
     }
+    
   </script>
 </body>
 </html>

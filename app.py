@@ -136,19 +136,49 @@ def adicionar_efetivo():
 
 @app.route('/efetivo/<int:id>', methods=['PUT'])
 def atualizar_efetivo(id):
-    if not require_login_admin():
+    if 'usuario' not in session or session['usuario']['perfil'] != 'admin':
         return jsonify({'erro': 'Acesso negado'}), 403
-    form = request.form
-    foto = request.files['foto']
-    filename = secure_filename(foto.filename)
-    caminho_foto = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    foto.save(caminho_foto)
-    foto_url = f'/uploads/{filename}'
-    query_db("""UPDATE efetivo SET nome=%s, cpf=%s, rg=%s, matricula=%s, posto=%s,
-                nascimento=%s, admissao=%s, foto=%s, link_qrcode=%s WHERE id=%s""",
-             (form['nome'], form['cpf'], form['rg'], form['matricula'], form['posto'],
-              form['nascimento'], form['admissao'], foto_url, form['link_qrcode'], id))
-    return jsonify({'status': 'Atualizado com sucesso'})
+
+    try:
+        form = request.form
+        foto = request.files.get('foto')
+
+        # Validar campos obrigatórios
+        if not foto or not foto.filename:
+            return jsonify({'erro': 'Foto é obrigatória'}), 400
+
+        if not form.get('link_qrcode'):
+            return jsonify({'erro': 'Link do QR Code é obrigatório'}), 400
+
+        # Salvar a imagem no disco temporariamente
+        filename = secure_filename(foto.filename)
+        caminho_local = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        foto.save(caminho_local)
+
+        # Upload para o Google Drive
+        from google_drive_upload import upload_to_drive
+        foto_url = upload_to_drive(caminho_local, filename)
+
+        # Remove o arquivo local após o upload
+        os.remove(caminho_local)
+
+        # Atualiza no banco
+        query_db("""UPDATE efetivo SET 
+                        nome=%s, cpf=%s, rg=%s, matricula=%s, posto=%s,
+                        nascimento=%s, admissao=%s, foto=%s, link_qrcode=%s 
+                    WHERE id=%s""",
+                 (
+                     form['nome'], form['cpf'], form['rg'], form['matricula'],
+                     form['posto'], form['nascimento'], form['admissao'],
+                     foto_url, form['link_qrcode'], id
+                 ))
+
+        return jsonify({'status': 'Atualizado com sucesso'})
+
+    except Exception as e:
+        print('Erro ao atualizar efetivo:', e)
+        return jsonify({'erro': 'Erro interno ao atualizar efetivo'}), 500
+
 
 @app.route('/efetivo/<int:id>', methods=['DELETE'])
 def excluir_efetivo(id):

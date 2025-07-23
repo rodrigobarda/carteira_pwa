@@ -7,3 +7,7 @@ services:
     envVars:
       - key: FLASK_ENV
         value: production
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        value: {"web":{"client_id":"483042490001-l09sssfb0c71u5e778008u2467d6smr0.apps.googleusercontent.com","project_id":"carteira-bombeiro","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_secret":"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","redirect_uris":["https://carteira-pwa.onrender.com","http://127.0.0.1:5000"]}}
+      - key: GOOGLE_DRIVE_FOLDER_ID
+        value: 1UUmm762VLzC19s1XjzcFo1ulhGYlndJR

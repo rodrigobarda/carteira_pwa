@@ -6,7 +6,6 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import bcrypt
-from google_drive_upload import upload_to_drive
 
 app = Flask(__name__)
 CORS(app)
@@ -136,48 +135,19 @@ def adicionar_efetivo():
 
 @app.route('/efetivo/<int:id>', methods=['PUT'])
 def atualizar_efetivo(id):
-    if 'usuario' not in session or session['usuario']['perfil'] != 'admin':
+    if not require_login_admin():
         return jsonify({'erro': 'Acesso negado'}), 403
-
-    try:
-        form = request.form
-        foto = request.files.get('foto')
-
-        # Validar campos obrigatórios
-        if not foto or not foto.filename:
-            return jsonify({'erro': 'Foto é obrigatória'}), 400
-
-        if not form.get('link_qrcode'):
-            return jsonify({'erro': 'Link do QR Code é obrigatório'}), 400
-
-        # Salvar a imagem no disco temporariamente
-        filename = secure_filename(foto.filename)
-        caminho_local = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        foto.save(caminho_local)
-
-        # Upload para o Google Drive
-        from google_drive_upload import upload_to_drive
-        foto_url = upload_to_drive(caminho_local, filename)
-
-        # Remove o arquivo local após o upload
-        os.remove(caminho_local)
-
-        # Atualiza no banco
-        query_db("""UPDATE efetivo SET 
-                        nome=%s, cpf=%s, rg=%s, matricula=%s, posto=%s,
-                        nascimento=%s, admissao=%s, foto=%s, link_qrcode=%s 
-                    WHERE id=%s""",
-                 (
-                     form['nome'], form['cpf'], form['rg'], form['matricula'],
-                     form['posto'], form['nascimento'], form['admissao'],
-                     foto_url, form['link_qrcode'], id
-                 ))
-
-        return jsonify({'status': 'Atualizado com sucesso'})
-
-    except Exception as e:
-        print('Erro ao atualizar efetivo:', e)
-        return jsonify({'erro': 'Erro interno ao atualizar efetivo'}), 500
+    form = request.form
+    foto = request.files['foto']
+    filename = secure_filename(foto.filename)
+    caminho_foto = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    foto.save(caminho_foto)
+    foto_url = f'/uploads/{filename}'
+    query_db("""UPDATE efetivo SET nome=%s, cpf=%s, rg=%s, matricula=%s, posto=%s,
+                nascimento=%s, admissao=%s, foto=%s, link_qrcode=%s WHERE id=%s""",
+             (form['nome'], form['cpf'], form['rg'], form['matricula'], form['posto'],
+              form['nascimento'], form['admissao'], foto_url, form['link_qrcode'], id))
+    return jsonify({'status': 'Atualizado com sucesso'})
 
 
 @app.route('/efetivo/<int:id>', methods=['DELETE'])
@@ -258,20 +228,24 @@ def excluir_usuario(id):
     conn.close()
     return jsonify({'status': 'Usuário excluído'})
 
-# Upload para Google Drive (mantido, caso esteja em uso)
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    if 'usuario' not in session:
-        return jsonify({'erro': 'Acesso negado'}), 403
+    if 'foto' not in request.files:
+        return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
     foto = request.files['foto']
-    if not foto.filename:
-        return jsonify({'erro': 'Arquivo inválido'}), 400
+    if foto.filename == '':
+        return jsonify({'erro': 'Nenhum arquivo selecionado'}), 400
     filename = secure_filename(foto.filename)
     caminho = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     foto.save(caminho)
-    url_drive = upload_to_drive(caminho, filename)
-    os.remove(caminho)
-    return jsonify({'foto': url_drive})
+    caminho_url = f'/uploads/{filename}'
+    return jsonify({'foto': caminho_url})
+
+@app.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
 
 if __name__ == '__main__':
     #app.run(host='0.0.0.0', port=5000)

@@ -313,7 +313,8 @@
           fotoPreview.style.marginTop = '0.5rem';
           form.querySelector('input[name="foto"]').parentNode.appendChild(fotoPreview);
         }
-        fotoPreview.src = pessoa.foto || '';
+        fotoPreview.src = pessoa.foto ? pessoa.foto : '';
+
 
         form.setAttribute('data-edit-id', id);
         form.querySelector('button[type="submit"]').textContent = 'Atualizar';

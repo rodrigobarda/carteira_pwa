@@ -116,7 +116,7 @@
 
       try {
         const resp = await fetch('/efetivo', {
-          headers: { 'Authorization': 'Bearer ' + token }
+          headers: {}
         });
 
         const lista = await resp.json();

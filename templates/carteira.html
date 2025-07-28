@@ -22,6 +22,8 @@
       background-image: url('https://www.cbmac.ac.gov.br/wp-content/uploads/2025/07/RGCBMAC.png');
       background-size: cover;
       background-position: center;
+
+
       background-repeat: no-repeat;
       color: rgb(201, 0, 0);
       border-radius: 12px;
@@ -74,7 +76,6 @@
   <script>
     const params = new URLSearchParams(window.location.search);
     const usuario_id = params.get('usuario_id');
-    const token = localStorage.getItem('token');
 
     function formatarDataBR(dataISO) {
       if (!dataISO) return '';
@@ -109,14 +110,15 @@
 
 
     async function carregarCarteira() {
-      if (!usuario_id || !token) {
-        document.getElementById('carteira-container').innerHTML = '<p>Usuário não identificado ou token ausente.</p>';
+      if (!usuario_id) {
+        document.getElementById('carteira-container').innerHTML = '<p>Usuário não identificado.</p>';
         return;
       }
 
+
       try {
         const resp = await fetch('/efetivo', {
-          headers: {}
+          credentials: 'same-origin'
         });
 
         const lista = await resp.json();

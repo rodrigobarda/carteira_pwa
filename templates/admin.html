@@ -35,19 +35,25 @@
     h1 {
       font-size: 1.5rem;
     }
-    button#logout {
-      background: white;
-      color: #b31217;
-      border: 2px solid white;
+    button#logout,
+    a.btn-amarelo,
+    button.btn-amarelo {
+      background-color: #FFD700;
+      color: #000;
+      border: 2px solid #FFD700;
       padding: 0.5rem 1rem;
-      border-radius: 8px;
+      border-radius: 6px;
       font-weight: bold;
       cursor: pointer;
       transition: 0.3s;
+      text-decoration: none;
+      display: inline-block;
     }
-    button#logout:hover {
-      background: #f2f2f2;
-      border-color: #b31217;
+    button#logout:hover,
+    a.btn-amarelo:hover,
+    button.btn-amarelo:hover {
+      background-color: #e6c200;
+      border-color: #e6c200;
     }
     form#formulario {
       width: 100%;
@@ -71,9 +77,9 @@
     }
     form#formulario button {
       grid-column: 1 / -1;
-      background: #b31217;
-      color: white;
-      border: none;
+      background: #FFD700;
+      color: #000;
+      border: 2px solid #FFD700;
       padding: 0.75rem;
       border-radius: 8px;
       font-weight: bold;
@@ -81,7 +87,8 @@
       transition: 0.3s;
     }
     form#formulario button:hover {
-      background: #8e0e13;
+      background-color: #e6c200;
+      border-color: #e6c200;
     }
 
     #filtro-container {
@@ -99,7 +106,7 @@
       font-size: 1rem;
       color: #b31217;
     }
-    
+
     .formulario input {
         width: 100%;
         padding: 10px;
@@ -130,55 +137,20 @@
     }
     ul#lista li button {
       margin-top: 0.5rem;
-      background: white;
-      color: #b31217;
-      border: 2px solid #b31217;
-      padding: 0.3rem 0.6rem;
-      border-radius: 6px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: 0.3s;
       margin-right: 0.5rem;
-    }
-    ul#lista li button:hover {
-      background: #f2f2f2;
     }
     @media (max-width: 600px) {
       form#formulario {
         grid-template-columns: 1fr;
       }
     }
-    .btn-vermelho {
-      background-color: #ff0000;
-      color: #ffffff;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 6px;
-      text-decoration: none;
-      font-weight: bold;
-      display: inline-block;
-     
-    }
-
-    .btn-vermelho:hover {
-      background-color: #920e13;
-    }
-    .btn.ver {
-      background-color: #1e88e5;
-      color: white;
-      margin-left: 4px;
-    }
-
-    .btn.ver:hover {
-      background-color: #1565c0;
-    }
   </style>
 </head>
 <body>
   <header>
     <h1>Painel Administrativo</h1>
-    <a href="cadastro.html" class="btn-vermelho">Usuários</a>
-    <button class="btn-vermelho" onclick="logout()">Sair</button>
+    <a href="cadastro.html" class="btn-amarelo">Usuários</a>
+    <button id="logout" class="btn-amarelo" onclick="logout()">Sair</button>
   </header>
 
   <br>
@@ -229,7 +201,6 @@
   <ul id="lista"></ul>
 
   <script>
-    
     function logout() {
       fetch('/logout')
         .then(() => window.location.href = '/');
@@ -268,10 +239,10 @@
           CPF: ${pessoa.cpf} | RG: ${pessoa.rg}<br>
           Nasc: ${formatarData(pessoa.nascimento)} | Adm: ${formatarData(pessoa.admissao)}<br>
           ${pessoa.foto ? `<img src="${pessoa.foto}" alt="Foto">` : ''}<br>
-          <button onclick="editar(${pessoa.id})">Editar</button>
-          <button onclick="excluir(${pessoa.id})">Excluir</button>
-          <button class="btn ver" onclick="verCarteira(${pessoa.usuario_id})">Ver</button>
-          <button class="btn ver" onclick="window.location.href='cadastro.html?efetivo_id=${pessoa.id}'">
+          <button class="btn-amarelo" onclick="editar(${pessoa.id})">Editar</button>
+          <button class="btn-amarelo" onclick="excluir(${pessoa.id})">Excluir</button>
+          <button class="btn-amarelo" onclick="verCarteira(${pessoa.usuario_id})">Ver</button>
+          <button class="btn-amarelo" onclick="window.location.href='cadastro.html?efetivo_id=${pessoa.id}'">
             Cadastrar Usuário
           </button>
         `;
@@ -315,7 +286,6 @@
         }
         fotoPreview.src = pessoa.foto ? pessoa.foto : '';
 
-
         form.setAttribute('data-edit-id', id);
         form.querySelector('button[type="submit"]').textContent = 'Atualizar';
         filtroInput.value = '';
@@ -329,7 +299,7 @@
 
     async function excluir(id) {
       if (confirm('Deseja excluir este registro?')) {
-        await fetch('/efetivo/' + id, { method: 'DELETE', headers });
+        await fetch('/efetivo/' + id, { method: 'DELETE' });
         carregar();
       }
     }
@@ -338,9 +308,7 @@
     async function verCarteira(usuarioId) {
       try {
         const resp = await fetch(`/efetivo`);
-
         const lista = await resp.json();
-        
         const usuario = lista.find(u => String(u.usuario_id) === String(usuarioId));
 
         if (!usuario) {
@@ -358,29 +326,24 @@
     }
     window.verCarteira = verCarteira;
 
-
     form.addEventListener('submit', async e => {
       e.preventDefault();
-      
+
       const fd = new FormData(form);
-      await fetch('/efetivo', {
-        method: 'POST',
-        body: fd  // isso usa multipart/form-data automaticamente
-      });
 
       const editId = form.getAttribute('data-edit-id');
 
-      if (editId) {
-        // Exigir foto e link_qrcode na edição
-        if (!fd.get('foto').name) {
-          alert('A foto é obrigatória ao atualizar');
-          return;
-        }
-        if (!fd.get('link_qrcode')) {
-          alert('O link do QR Code é obrigatório');
-          return;
-        }
+      // Validações antes do envio
+      if (!fd.get('foto').name && !editId) {
+        alert('A foto é obrigatória');
+        return;
+      }
+      if (!fd.get('link_qrcode')) {
+        alert('O link do QR Code é obrigatório');
+        return;
+      }
 
+      if (editId) {
         await fetch('/efetivo/' + editId, {
           method: 'PUT',
           body: fd
@@ -389,16 +352,6 @@
         form.removeAttribute('data-edit-id');
         form.querySelector('button[type="submit"]').textContent = 'Cadastrar';
       } else {
-        // Cadastro novo
-        if (!fd.get('foto').name) {
-          alert('A foto é obrigatória');
-          return;
-        }
-        if (!fd.get('link_qrcode')) {
-          alert('O link do QR Code é obrigatório');
-          return;
-        }
-
         await fetch('/efetivo', {
           method: 'POST',
           body: fd
@@ -419,7 +372,6 @@
         .catch(err => console.error('Erro ao registrar Service Worker:', err));
       });
     }
-    
   </script>
 </body>
 </html>

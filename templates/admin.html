@@ -361,7 +361,12 @@
 
     form.addEventListener('submit', async e => {
       e.preventDefault();
+      
       const fd = new FormData(form);
+      await fetch('/efetivo', {
+        method: 'POST',
+        body: fd  // isso usa multipart/form-data automaticamente
+      });
 
       const editId = form.getAttribute('data-edit-id');
 

@@ -125,13 +125,26 @@ def obter_efetivo(id):
 def adicionar_efetivo():
     if not require_login_admin():
         return jsonify({'erro': 'Acesso negado'}), 403
-    data = request.get_json()
+
+    form = request.form
+    foto = request.files.get('foto')
+
+    if not foto:
+        return jsonify({'erro': 'Foto é obrigatória'}), 400
+
+    filename = secure_filename(foto.filename)
+    caminho_foto = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    foto.save(caminho_foto)
+    foto_url = f'/uploads/{filename}'
+
     query_db("""INSERT INTO efetivo (nome, cpf, rg, matricula, posto, nascimento, admissao, foto, link_qrcode)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-             (data['nome'], data['cpf'], data['rg'], data['matricula'],
-              data['posto'], data['nascimento'][:10], data['admissao'][:10],
-              data.get('foto', ''), data.get('link_qrcode', '')))
+             (form['nome'], form['cpf'], form['rg'], form['matricula'],
+              form['posto'], form['nascimento'][:10], form['admissao'][:10],
+              foto_url, form.get('link_qrcode', '')))
+
     return jsonify({'status': 'Cadastrado com sucesso'})
+
 
 @app.route('/efetivo/<int:id>', methods=['PUT'])
 def atualizar_efetivo(id):

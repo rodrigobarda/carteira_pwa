@@ -12,7 +12,7 @@ CORS(app)
 app.secret_key = 'segredo123'  # Usado para sessão
 
 # Configuração do banco PostgreSQL (Render)
-DATABASE_URL = "postgresql://neondb_owner:npg_gXAQk5D8aYFI@ep-blue-mouse-acwqphpx-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+DATABASE_URL = 'postgresql://neondb_owner:npg_gXAQk5D8aYFI@ep-blue-mouse-acwqphpx-pooler.sa-east-1.aws.neon.tech/efetivo-bm?sslmode=require&channel_binding=require'
 
 # Pasta de uploads
 UPLOAD_FOLDER = 'uploads'

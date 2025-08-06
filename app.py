@@ -150,17 +150,39 @@ def adicionar_efetivo():
 def atualizar_efetivo(id):
     if not require_login_admin():
         return jsonify({'erro': 'Acesso negado'}), 403
+
     form = request.form
-    foto = request.files['foto']
-    filename = secure_filename(foto.filename)
-    caminho_foto = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    foto.save(caminho_foto)
-    foto_url = f'/uploads/{filename}'
-    query_db("""UPDATE efetivo SET nome=%s, cpf=%s, rg=%s, matricula=%s, posto=%s,
-                nascimento=%s, admissao=%s, foto=%s, link_qrcode=%s WHERE id=%s""",
-             (form['nome'], form['cpf'], form['rg'], form['matricula'], form['posto'],
-              form['nascimento'], form['admissao'], foto_url, form['link_qrcode'], id))
+    foto = request.files.get('foto')
+
+    if foto:
+        filename = secure_filename(foto.filename)
+        caminho_foto = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        foto.save(caminho_foto)
+        foto_url = f'/uploads/{filename}'
+
+        query_db("""
+            UPDATE efetivo SET
+            nome=%s, cpf=%s, rg=%s, matricula=%s, posto=%s,
+            nascimento=%s, admissao=%s, foto=%s, link_qrcode=%s
+            WHERE id=%s
+            """,
+            (form['nome'], form['cpf'], form['rg'], form['matricula'],
+             form['posto'], form['nascimento'][:10], form['admissao'][:10],
+             foto_url, form.get('link_qrcode', ''), id))
+    else:
+        # Sem foto nova, manter a foto antiga
+        query_db("""
+            UPDATE efetivo SET
+            nome=%s, cpf=%s, rg=%s, matricula=%s, posto=%s,
+            nascimento=%s, admissao=%s, link_qrcode=%s
+            WHERE id=%s
+            """,
+            (form['nome'], form['cpf'], form['rg'], form['matricula'],
+             form['posto'], form['nascimento'][:10], form['admissao'][:10],
+             form.get('link_qrcode', ''), id))
+
     return jsonify({'status': 'Atualizado com sucesso'})
+
 
 
 @app.route('/efetivo/<int:id>', methods=['DELETE'])

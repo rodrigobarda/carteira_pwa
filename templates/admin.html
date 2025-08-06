@@ -330,38 +330,57 @@
       e.preventDefault();
 
       const fd = new FormData(form);
-
+      const mensagem = document.getElementById('mensagem');
       const editId = form.getAttribute('data-edit-id');
 
-      // Validações antes do envio
       if (!fd.get('foto').name && !editId) {
         alert('A foto é obrigatória');
         return;
       }
+
       if (!fd.get('link_qrcode')) {
         alert('O link do QR Code é obrigatório');
         return;
       }
 
-      if (editId) {
-        await fetch('/efetivo/' + editId, {
-          method: 'PUT',
-          body: fd
-        });
+      try {
+        let response;
+        if (editId) {
+          response = await fetch('/efetivo/' + editId, {
+            method: 'PUT',
+            body: fd
+          });
+          form.removeAttribute('data-edit-id');
+          form.querySelector('button[type="submit"]').textContent = 'Cadastrar';
+        } else {
+          response = await fetch('/efetivo', {
+            method: 'POST',
+            body: fd
+          });
+        }
 
-        form.removeAttribute('data-edit-id');
-        form.querySelector('button[type="submit"]').textContent = 'Cadastrar';
-      } else {
-        await fetch('/efetivo', {
-          method: 'POST',
-          body: fd
-        });
+        const data = await response.json();
+
+        if (data.status === 'Cadastrado com sucesso') {
+          mensagem.textContent = data.status;
+          mensagem.style.display = 'block';
+          mensagem.style.backgroundColor = '#d4edda';
+          mensagem.style.color = '#155724';
+
+          setTimeout(() => {
+            mensagem.style.display = 'none';
+            mensagem.textContent = '';
+          }, 4000);
+        }
+
+        form.reset();
+        carregar();
+      } catch (erro) {
+        console.error('Erro ao cadastrar:', erro);
+        alert('Erro ao cadastrar. Tente novamente.');
       }
-
-      form.reset();
-      carregar();
     });
-
+    
     carregar();
   </script>
   <script>

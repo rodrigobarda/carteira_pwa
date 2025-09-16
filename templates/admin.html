@@ -361,7 +361,7 @@
 
         const data = await response.json();
 
-        if (data.status === 'Cadastrado com sucesso') {
+        if (data.status === 'Cadastrado com sucesso' || data.status === 'Atualizado com sucesso') {
           mensagem.textContent = data.status;
           mensagem.style.display = 'block';
           mensagem.style.backgroundColor = '#d4edda';

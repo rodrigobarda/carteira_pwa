@@ -8,7 +8,7 @@ from datetime import datetime
 import bcrypt
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 app.secret_key = 'segredo123'  # Usado para sessão
 
 # Configuração do banco PostgreSQL (Render)

@@ -2,16 +2,22 @@ import os
 import psycopg2
 import psycopg2.extras
 from flask import Flask, request, jsonify, render_template, redirect, session, send_from_directory
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from flask_cors import CORS
+from flask_bcrypt import Bcrypt
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import bcrypt
+import jwt
 
 app = Flask(__name__)
+app.config["JWT_SECRET_KEY"] = "senha123"
+app.secret_key = "senha123"
+bcrypt = Bcrypt(app)
+jwt = JWTManager(app)
 CORS(app)
-app.secret_key = 'segredo123'  # Usado para sessão
-
-# Configuração do banco PostgreSQL (Render)
+# Configuração do banco Postg
+# reSQL (Render)
 DATABASE_URL = 'postgresql://neondb_owner:npg_gXAQk5D8aYFI@ep-blue-mouse-acwqphpx-pooler.sa-east-1.aws.neon.tech/efetivo-bm?sslmode=require&channel_binding=require'
 
 # Pasta de uploads
@@ -60,39 +66,26 @@ def logout():
     return redirect('/')
 
 # LOGIN
-from flask import request, session, redirect, jsonify
-import bcrypt
-
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
-    email = data.get('email')
-    senha = data.get('senha')
+    email = data.get("email")
+    senha = data.get("senha")
 
-    if not email or not senha:
-        return jsonify({'erro': 'Email e senha são obrigatórios'}), 400
+    conn = get_pg_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("SELECT id, email, senha, perfil FROM usuarios WHERE email = %s", (email,))
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
 
-    usuario = query_db("SELECT * FROM usuarios WHERE email = %s", (email,), fetch=True)
+    if user and bcrypt.check_password_hash(user["senha"], senha):
+        access_token = create_access_token(identity={"id": user["id"], "email": user["email"], "perfil": user["perfil"]})
+        session['usuario'] = {"id": user["id"], "email": user["email"], "perfil": user["perfil"]}
+        redirect_url = "/admin.html" if user["perfil"].lower() == "admin" else f"/carteira.html?usuario_id={user['id']}"
+        return jsonify({"redirect": redirect_url, "token": access_token})
 
-    if usuario and bcrypt.checkpw(senha.encode(), usuario[0]['senha'].encode()):
-        session['usuario'] = {
-            'id': usuario[0]['id'],
-            'nome': usuario[0]['nome'],
-            'email': usuario[0]['email'],
-            'perfil': usuario[0]['perfil']
-        }
-
-        # Redirecionamento baseado no perfil
-        if usuario[0]['perfil'].lower() == 'admin':
-            return jsonify({'redirect': '/admin.html'})
-        else:
-            efetivo = query_db("SELECT * FROM efetivo WHERE usuario_id = %s", (usuario[0]['id'],), fetch=True)
-            if not efetivo:
-                return jsonify({'erro': 'Efetivo não encontrado'}), 404
-            return jsonify({'redirect': f"/carteira.html?usuario_id={efetivo[0]['usuario_id']}"})
-
-    return jsonify({'erro': 'Credenciais inválidas'}), 401
-
+    return jsonify({"erro": "Credenciais inválidas"}), 401
 
 # PROTEÇÃO manual nas rotas
 def require_login_admin():

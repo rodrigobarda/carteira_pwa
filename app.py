@@ -108,14 +108,22 @@ def get_efetivo(usuario_id):
 
     return jsonify(efetivo)
 
-
 # CRUD EFETIVO
+from flask_jwt_extended import jwt_required, get_jwt_identity
+
 @app.route('/efetivo', methods=['GET'])
+@jwt_required()
 def listar_efetivo():
-    if 'usuario' not in session:
-        return jsonify({'erro': 'Acesso negado'}), 403
-    dados = query_db("SELECT * FROM efetivo", fetch=True)
-    return jsonify(dados)
+    usuario = get_jwt_identity()
+    # agora você pode filtrar pelo id ou retornar todo o efetivo
+    conn = get_pg_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("SELECT * FROM efetivo")
+    lista = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(lista)
+
 
 @app.route('/efetivo/<int:id>', methods=['GET'])
 def obter_efetivo(id):

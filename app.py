@@ -6,12 +6,11 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import bcrypt
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
-app.config['JWT_SECRET_KEY'] = 'segredo123'  # Usado para sessão
-jwt = JWTManager(app)
+CORS(app)
+app.secret_key = 'segredo123'  # Usado para sessão
+
 # Configuração do banco PostgreSQL (Render)
 DATABASE_URL = 'postgresql://neondb_owner:npg_gXAQk5D8aYFI@ep-blue-mouse-acwqphpx-pooler.sa-east-1.aws.neon.tech/efetivo-bm?sslmode=require&channel_binding=require'
 
@@ -76,12 +75,21 @@ def login():
     usuario = query_db("SELECT * FROM usuarios WHERE email = %s", (email,), fetch=True)
 
     if usuario and bcrypt.checkpw(senha.encode(), usuario[0]['senha'].encode()):
-        token = create_access_token(identity=usuario[0]['id'])
-        return jsonify({
-            'token': token,
-            'usuario_id': usuario[0]['id'],
+        session['usuario'] = {
+            'id': usuario[0]['id'],
+            'nome': usuario[0]['nome'],
+            'email': usuario[0]['email'],
             'perfil': usuario[0]['perfil']
-        })
+        }
+
+        # Redirecionamento baseado no perfil
+        if usuario[0]['perfil'].lower() == 'admin':
+            return jsonify({'redirect': '/admin.html'})
+        else:
+            efetivo = query_db("SELECT * FROM efetivo WHERE usuario_id = %s", (usuario[0]['id'],), fetch=True)
+            if not efetivo:
+                return jsonify({'erro': 'Efetivo não encontrado'}), 404
+            return jsonify({'redirect': f"/carteira.html?usuario_id={efetivo[0]['usuario_id']}"})
 
     return jsonify({'erro': 'Credenciais inválidas'}), 401
 
@@ -94,14 +102,11 @@ def require_login_admin():
 
 # CRUD EFETIVO
 @app.route('/efetivo', methods=['GET'])
-@jwt_required()
 def listar_efetivo():
-    usuario_id = get_jwt_identity()
-    efetivo = query_db("SELECT * FROM efetivo WHERE usuario_id = %s", (usuario_id,), fetch=True)
-    if not efetivo:
-        return jsonify({'erro': 'Efetivo não encontrado'}), 404
-    return jsonify(efetivo)
-
+    if 'usuario' not in session:
+        return jsonify({'erro': 'Acesso negado'}), 403
+    dados = query_db("SELECT * FROM efetivo", fetch=True)
+    return jsonify(dados)
 
 @app.route('/efetivo/<int:id>', methods=['GET'])
 def obter_efetivo(id):

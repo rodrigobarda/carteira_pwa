@@ -101,10 +101,21 @@
 
         const data = await resp.json();
 
-        if (data.redirect) {
-          window.location.href = data.redirect;
+        if (resp.ok) {
+          // Salva o token JWT no localStorage para requisições futuras
+          if (data.token) {
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('usuario_id', data.usuario_id);
+          }
+
+          // Redireciona se houver redirect (HTML)
+          if (data.redirect) {
+            window.location.href = data.redirect;
+          } else {
+            alert('Login realizado com sucesso!');
+          }
         } else {
-          alert(data.erro || 'Erro no login');
+          alert(data.erro || 'Credenciais inválidas');
         }
       } catch (err) {
         console.error('Erro no login:', err);
@@ -112,11 +123,13 @@
       }
     });
 
+    // Registro do service worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/service-worker.js')
         .then(() => console.log('✅ Service Worker registrado!'))
         .catch(err => console.error('Erro ao registrar SW', err));
     }
-  </script>
+</script>
+
 </body>
 </html>

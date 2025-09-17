@@ -93,6 +93,22 @@ def require_login_admin():
         return False
     return True
 
+@app.route('/efetivo/<int:usuario_id>', methods=['GET'])
+@jwt_required()
+def get_efetivo(usuario_id):
+    conn = get_pg_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("SELECT * FROM efetivo WHERE usuario_id = %s", (usuario_id,))
+    efetivo = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not efetivo:
+        return jsonify({'erro': 'Efetivo não encontrado'}), 404
+
+    return jsonify(efetivo)
+
+
 # CRUD EFETIVO
 @app.route('/efetivo', methods=['GET'])
 def listar_efetivo():
